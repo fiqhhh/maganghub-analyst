@@ -99,14 +99,19 @@ def proses_data_api():
     if time.time() - LAST_SCRAPED < 3600 and LOWONGAN_CACHE:
         print("Menggunakan data dari cache.")
         return LOWONGAN_CACHE
-
+    
+    # --- PENTING: BATASAN VERCEL FREE TIER ---
+    # Vercel Free Tier memiliki batas eksekusi 10 detik. Scraping semua halaman akan menyebabkan TIMEOUT.
+    # Kita batasi hanya mengambil halaman 1.
+    MAX_PAGES_LIMIT = 1 
+    
     all_data = []
     current_page = 1
     total_pages = 1
     
-    print("Memulai pengambilan data dari API MagangHub (seluruh halaman)...")
+    print("Memulai pengambilan data dari API MagangHub (mode uji coba Vercel)...")
 
-    while current_page <= total_pages:
+    while current_page <= total_pages and current_page <= MAX_PAGES_LIMIT:
         params = MAGANGHUB_PARAMS.copy()
         params['page'] = current_page
         
@@ -125,9 +130,16 @@ def proses_data_api():
             break
 
         if current_page == 1:
-            total_pages = data.get('meta', {}).get('pagination', {}).get('last_page', 1)
+            total_pages_full = data.get('meta', {}).get('pagination', {}).get('last_page', 1)
             total_items = data.get('meta', {}).get('pagination', {}).get('total', 0)
-            print(f"Total Lowongan MagangHub: {total_items}. Mengambil semua {total_pages} halaman.")
+            
+            if total_pages_full > MAX_PAGES_LIMIT:
+                 print(f"Total Lowongan MagangHub: {total_items}. Uji coba dibatasi hingga {MAX_PAGES_LIMIT} halaman (Total harusnya {total_pages_full} halaman).")
+            else:
+                 print(f"Total Lowongan MagangHub: {total_items}. Mengambil semua {total_pages_full} halaman.")
+            
+            # Jika total halaman asli lebih besar dari limit, kita hanya set total_pages ke limit
+            total_pages = min(total_pages_full, MAX_PAGES_LIMIT) 
         
         # Ekstraksi data
         for item in data.get('data', []):
@@ -179,7 +191,7 @@ def get_lowongan_data():
     
     lowongan_data = proses_data_api()
     
-    # PERBAIKAN PENTING: Tangani data kosong agar Pandas tidak KeyError
+    # Tangani data kosong agar Pandas tidak KeyError
     if not lowongan_data:
         print("PERINGATAN: Data lowongan kosong dari API MagangHub.")
         return jsonify([])
@@ -190,7 +202,6 @@ def get_lowongan_data():
         item['kategori'] = classification_map.get(item['id'], 'NON-IT') 
         
     df = pd.DataFrame(lowongan_data)
-    # Pandas sort_values sekarang aman karena data sudah dipastikan ada
     df = df.sort_values(by=['peluang', 'kuota'], ascending=[False, False])
     
     return jsonify(df.to_dict('records'))
@@ -211,7 +222,7 @@ def recommend_positions():
         
     filename = secure_filename(file.filename)
     
-    # PERBAIKAN W/ VERCEL: Buat folder /tmp/uploads jika belum ada
+    # Buat folder /tmp/uploads jika belum ada
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True) 
 
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -219,6 +230,7 @@ def recommend_positions():
 
     uploaded_file = None
     try:
+        # Gunakan data lowongan yang terbatas (hanya 1 halaman)
         all_lowongan = proses_data_api()
         
         if not all_lowongan:
@@ -226,13 +238,14 @@ def recommend_positions():
 
         df_all = pd.DataFrame(all_lowongan)
         
-        df_top = df_all.sort_values(by=['peluang', 'kuota'], ascending=[False, False]).head(200)
+        # Ambil semua data dari hasil 1 halaman untuk dijadikan prompt
+        df_top = df_all.sort_values(by=['peluang', 'kuota'], ascending=[False, False])
         lowongan_prompt = df_top[['id', 'posisi', 'perusahaan', 'deskripsi', 'peluang']].to_string(index=False)
         
         uploaded_file = gemini_client.files.upload(file=filepath)
         
         prompt = (
-            "Kamu adalah konsultan karir profesional. Analisis CV yang diunggah dan bandingkan dengan daftar 200 lowongan MagangHub di bawah. "
+            "Kamu adalah konsultan karir profesional. Analisis CV yang diunggah dan bandingkan dengan daftar lowongan MagangHub di bawah. "
             "Rekomendasikan 20 lowongan yang paling COCOK KUALIFIKASI dan memiliki PELUANG DITERIMA tertinggi. "
             "Jawab hanya dalam format JSON ARRAY dengan struktur: "
             "[{\"id\": \"id_posisi_terkait\", \"posisi\": \"Nama Posisi\", \"alasan\": \"Alasan utama kecocokan dan peluang tinggi (maks 2 kalimat)\"}]."
