@@ -3,5 +3,4 @@ requests
 pandas
 google-genai
 python-dotenv
-# Ganti Gunicorn dengan vercel-app untuk kompatibilitas Serverless:
-vercel-app 
+gunicorn
