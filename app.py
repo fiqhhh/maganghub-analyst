@@ -11,6 +11,7 @@ from google.genai.errors import APIError
 from werkzeug.utils import secure_filename
 
 # --- KONFIGURASI AWAL ---
+# Vercel akan menyediakan Environment Variables secara langsung
 
 app = Flask(__name__)
 
@@ -23,7 +24,7 @@ MAGANGHUB_PARAMS = {
     'kode_provinsi': 31 # Filter DKI Jakarta
 }
 
-# Ambil GEMINI_API_KEY LANGSUNG dari Environment Variable Vercel
+# Ambil GEMINI_API_KEY dari Environment Variable Vercel
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') 
 
 # Konfigurasi Upload File (Menggunakan /tmp yang bisa ditulis di Serverless)
@@ -61,7 +62,6 @@ def classify_lowongan_gemini(lowongan_list):
     if not gemini_client or not lowongan_list:
         return {}
     
-    # Ambil sampel lowongan (max 500) agar prompt tidak terlalu besar
     sample_lowongan = lowongan_list[:500] 
     
     prompt = (
@@ -178,12 +178,19 @@ def get_lowongan_data():
     """Endpoint untuk mengambil dan mengklasifikasikan data."""
     
     lowongan_data = proses_data_api()
+    
+    # PERBAIKAN PENTING: Tangani data kosong agar Pandas tidak KeyError
+    if not lowongan_data:
+        print("PERINGATAN: Data lowongan kosong dari API MagangHub.")
+        return jsonify([])
+    
     classification_map = classify_lowongan_gemini(lowongan_data)
     
     for item in lowongan_data:
         item['kategori'] = classification_map.get(item['id'], 'NON-IT') 
         
     df = pd.DataFrame(lowongan_data)
+    # Pandas sort_values sekarang aman karena data sudah dipastikan ada
     df = df.sort_values(by=['peluang', 'kuota'], ascending=[False, False])
     
     return jsonify(df.to_dict('records'))
@@ -213,6 +220,10 @@ def recommend_positions():
     uploaded_file = None
     try:
         all_lowongan = proses_data_api()
+        
+        if not all_lowongan:
+             return jsonify({"error": "Gagal mendapatkan data lowongan untuk perbandingan. Coba lagi."}), 500
+
         df_all = pd.DataFrame(all_lowongan)
         
         df_top = df_all.sort_values(by=['peluang', 'kuota'], ascending=[False, False]).head(200)
@@ -261,6 +272,5 @@ def recommend_positions():
         if os.path.exists(filepath):
             os.remove(filepath)
 
-# Bagian ini diabaikan oleh Vercel, tapi biarkan saja untuk local testing
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
