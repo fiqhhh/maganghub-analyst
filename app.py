@@ -9,11 +9,8 @@ import os
 from google import genai
 from google.genai.errors import APIError
 from werkzeug.utils import secure_filename
-from dotenv import load_dotenv 
 
 # --- KONFIGURASI AWAL ---
-# Muat variabel dari file .env
-load_dotenv() 
 
 app = Flask(__name__)
 
@@ -26,13 +23,12 @@ MAGANGHUB_PARAMS = {
     'kode_provinsi': 31 # Filter DKI Jakarta
 }
 
-# Ambil GEMINI_API_KEY dari .env
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY') 
+# Ambil GEMINI_API_KEY LANGSUNG dari Environment Variable Vercel
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') 
 
-# Konfigurasi Upload File
-UPLOAD_FOLDER = 'uploads' 
+# Konfigurasi Upload File (Menggunakan /tmp yang bisa ditulis di Serverless)
+UPLOAD_FOLDER = '/tmp/uploads' 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Klien Gemini
 gemini_client = None
@@ -58,13 +54,14 @@ def hitung_peluang(kuota, pelamar):
     peluang = (kuota / pelamar) * 100
     return min(peluang, 100.0)
 
-# --- FUNGSI GEMINI ---
+# --- FUNGSI GEMINI KLASIFIKASI ---
 
 def classify_lowongan_gemini(lowongan_list):
     """Mengklasifikasikan lowongan menjadi IT-RELATED atau NON-IT."""
     if not gemini_client or not lowongan_list:
         return {}
     
+    # Ambil sampel lowongan (max 500) agar prompt tidak terlalu besar
     sample_lowongan = lowongan_list[:500] 
     
     prompt = (
@@ -81,7 +78,6 @@ def classify_lowongan_gemini(lowongan_list):
     prompt += "\n\nData Lowongan:\n" + json.dumps(data_to_send, indent=2)
 
     try:
-        # PERBAIKAN: request_options DIHAPUS dari sini
         response = gemini_client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
@@ -115,14 +111,13 @@ def proses_data_api():
         params['page'] = current_page
         
         try:
-            # Menggunakan requests.get yang lebih andal
             response = requests.get(
                 MAGANGHUB_BASE_URL, 
                 params=params, 
                 timeout=30, # Timeout 30 detik
                 headers={'User-Agent': 'MagangHub-Scraper/1.0 (Python Flask)'}
             )
-            response.raise_for_status() # Cek status 4xx atau 5xx
+            response.raise_for_status()
             data = response.json()
         except requests.exceptions.RequestException as e:
             print(f"ERROR MagangHub API: Gagal mengambil halaman {current_page}. Berhenti. ({e})")
@@ -130,7 +125,6 @@ def proses_data_api():
             break
 
         if current_page == 1:
-            # Ambil total halaman dari respons API untuk loop
             total_pages = data.get('meta', {}).get('pagination', {}).get('last_page', 1)
             total_items = data.get('meta', {}).get('pagination', {}).get('total', 0)
             print(f"Total Lowongan MagangHub: {total_items}. Mengambil semua {total_pages} halaman.")
@@ -184,8 +178,6 @@ def get_lowongan_data():
     """Endpoint untuk mengambil dan mengklasifikasikan data."""
     
     lowongan_data = proses_data_api()
-    
-    # Klasifikasi dan tambahkan ke data
     classification_map = classify_lowongan_gemini(lowongan_data)
     
     for item in lowongan_data:
@@ -211,6 +203,10 @@ def recommend_positions():
         return jsonify({"error": "File tidak valid. Pastikan file berformat PDF."}), 400
         
     filename = secure_filename(file.filename)
+    
+    # PERBAIKAN W/ VERCEL: Buat folder /tmp/uploads jika belum ada
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True) 
+
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
@@ -265,5 +261,6 @@ def recommend_positions():
         if os.path.exists(filepath):
             os.remove(filepath)
 
-# if __name__ == '__main__':
-#     app.run(debug=True, host='0.0.0.0', port=5000)
+# Bagian ini diabaikan oleh Vercel, tapi biarkan saja untuk local testing
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
