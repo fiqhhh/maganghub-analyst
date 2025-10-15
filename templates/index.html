@@ -3,222 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MagangHub Peluang - Gemini App</title>
+    <title>MagangHub Simple Explorer</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background-color: #f0f4f8; 
-            color: #2c3e50; 
-        }
-        .container { 
-            max-width: 1200px; 
-            margin: auto; 
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        h1 { color: #1e40af; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
-        h2 { color: #10b981; margin-top: 0; }
-        .tab-buttons { display: flex; margin-bottom: 20px; }
-        .tab-buttons button { 
-            background-color: #d1e5ff; 
-            border: none; 
-            padding: 12px 25px; 
-            cursor: pointer; 
-            margin-right: 5px; 
-            border-radius: 8px 8px 0 0; 
-            transition: background-color 0.2s;
-            font-weight: 600;
-        }
-        .tab-buttons button.active { 
-            background-color: #1e40af; 
-            color: white; 
-            box-shadow: 0 3px 6px rgba(30, 64, 175, 0.3);
-        }
-        .tab-content { 
-            border: 1px solid #e5e7eb; 
-            padding: 25px; 
-            background-color: #fdfdfd; 
-            border-radius: 0 8px 8px 8px; 
-        }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
-        th { background-color: #f9fafb; cursor: pointer; color: #1f2937; font-weight: 700; }
-        tr:hover { background-color: #f3f4f6; }
-        
-        .low-peluang { background-color: #ffe4e6; }
-        .high-peluang { background-color: #d1fae5; }
-        
-        #loading { 
-            text-align: center; 
-            margin: 30px 0; 
-            font-size: 1.1em; 
-            font-weight: bold; 
-            color: #10b981; 
-            display: none; 
-        }
-        /* Style untuk animasi loading */
-        #loading span.dots {
-            display: inline-block;
-            overflow: hidden;
-            vertical-align: bottom;
-            height: 1.2em;
-            line-height: 1;
-            text-align: left;
-            margin-left: 0.2em;
-        }
-        
-        #recommendation-section { 
-            padding: 25px; 
-            background-color: #ecfdf5; 
-            border-radius: 8px; 
-            margin-top: 20px; 
-            border: 1px dashed #10b981;
-        }
-        #recommendation-results ol { padding-left: 20px; }
-        #recommendation-results li { margin-bottom: 15px; border-left: 3px solid #34d399; padding-left: 10px; }
-        #recommender-loading {
-            display:none; 
-            margin-top: 15px; 
-            color:#ef4444; 
-            font-weight: 600;
-            border: 1px solid #fecaca;
-            padding: 10px;
-            background-color: #fff7f7;
-            border-radius: 5px;
-        }
+        body { font-family: sans-serif; margin: 20px; background-color: #f8f9fa; color: #343a40; }
+        .container { max-width: 1000px; margin: auto; background-color: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #007bff; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #dee2e6; }
+        th { background-color: #e9ecef; cursor: pointer; color: #495057; }
+        tr:hover { background-color: #f1f1f1; }
+        .loading { text-align: center; margin: 30px 0; font-weight: bold; color: #28a745; }
+        .peluang-tinggi { background-color: #d4edda; } /* Hijau Muda */
+        .peluang-rendah { background-color: #f8d7da; } /* Merah Muda */
+        .link-detail { text-decoration: none; color: white; background-color: #007bff; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>MagangHub Explorer DKI Jakarta 🚀</h1>
-    
-    <div class="tab-buttons">
-        <button onclick="openTab('all-data', this)" class="active">Semua Lowongan (Jakarta)</button>
-        <button onclick="openTab('it-data', this)">IT-Related (Klasifikasi Gemini)</button>
-        <button onclick="openTab('recommender', this)">Rekomendasi CV 🎯</button>
+    <h1>MagangHub Lowongan Aktif (DKI Jakarta)</h1>
+    <p>Data diambil langsung dari API MagangHub. Total lowongan akan terisi setelah dimuat.</p>
+
+    <div id="loading" class="loading">
+        ⏳ Mengambil semua data MagangHub... Ini mungkin memakan waktu 1–2 menit.
     </div>
 
-    <div id="loading">Memuat data dari MagangHub dan AI sedang mengklasifikasikan<span class="dots"></span></div>
-
-    <div id="all-data" class="tab-content">
-        <h2>Semua Lowongan Aktif (Diurutkan Peluang Tertinggi)</h2>
-        <table id="all-table">
-            <thead>
-                <tr>
-                    <th onclick="sortTable('all-table', 0)">Posisi ↕️</th>
-                    <th onclick="sortTable('all-table', 1)">Perusahaan ↕️</th>
-                    <th onclick="sortTable('all-table', 2)">Kuota ↕️</th>
-                    <th onclick="sortTable('all-table', 3)">Pendaftar ↕️</th>
-                    <th onclick="sortTable('all-table', 4)">Peluang (%) ↕️</th>
-                    <th>Kategori (Gemini)</th>
-                    <th>Aksi</th> 
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-
-    <div id="it-data" class="tab-content" style="display:none;">
-        <h2>Lowongan IT-Related Paling Berpeluang</h2>
-        <table id="it-table">
-            <thead>
-                <tr>
-                    <th onclick="sortTable('it-table', 0)">Posisi ↕️</th>
-                    <th onclick="sortTable('it-table', 1)">Perusahaan ↕️</th>
-                    <th onclick="sortTable('it-table', 2)">Kuota ↕️</th>
-                    <th onclick="sortTable('it-table', 3)">Pendaftar ↕️</th>
-                    <th onclick="sortTable('it-table', 4)">Peluang (%) ↕️</th>
-                    <th>Jurusan Relevan</th>
-                    <th>Aksi</th> 
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-
-    <div id="recommender" class="tab-content" style="display:none;">
-        <div id="recommendation-section">
-            <h2>Upload CV (PDF) untuk Rekomendasi 20 Posisi Terbaik</h2>
-            <p>Gemini AI akan menganalisis isi CV kamu dan membandingkannya dengan peluang lolos dari semua lowongan yang tersedia.</p>
-            <form id="cv-upload-form">
-                <input type="file" id="cv-file-input" accept="application/pdf" required style="padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                <button type="submit" style="padding: 10px 20px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">Dapatkan Rekomendasi 🎯</button>
-            </form>
-            <div id="recommender-loading">
-                Mengunggah CV dan Gemini sedang menganalisis kecocokan... Proses ini mungkin membutuhkan waktu 20-40 detik.
-            </div>
-            <div id="recommendation-results">
-                </div>
-        </div>
-    </div>
+    <table id="lowongan-table" style="display:none;">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Posisi ↕️</th>
+                <th onclick="sortTable(1)">Perusahaan ↕️</th>
+                <th onclick="sortTable(2)">Kuota ↕️</th>
+                <th onclick="sortTable(3)">Pendaftar ↕️</th>
+                <th onclick="sortTable(4)">Peluang (%) ↕️</th>
+                <th>Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            </tbody>
+    </table>
 </div>
 
 <script>
     let lowonganData = [];
-    const IT_RELATED = 'IT-RELATED';
     const MAGANGHUB_BASE_LINK = 'https://maganghub.kemnaker.go.id/lowongan/view/';
-    let loadingInterval; // Variabel untuk menyimpan interval animasi
 
-    // Fungsi Animasi Loading
-    function startLoadingAnimation(targetElement) {
-        let dots = 0;
-        const dotsElement = targetElement.querySelector('.dots');
-        
-        // Hentikan interval lama jika ada
-        if (loadingInterval) clearInterval(loadingInterval);
-        
-        loadingInterval = setInterval(() => {
-            dots = (dots % 3) + 1;
-            dotsElement.innerHTML = '.'.repeat(dots);
-        }, 500);
-    }
-    
-    function stopLoadingAnimation() {
-        if (loadingInterval) {
-            clearInterval(loadingInterval);
-            loadingInterval = null;
-        }
-        const dotsElement = document.getElementById('loading').querySelector('.dots');
-        if (dotsElement) dotsElement.innerHTML = '';
-    }
-
-    function openTab(tabName, elm) {
-        const tabContents = document.getElementsByClassName("tab-content");
-        for (let i = 0; i < tabContents.length; i++) {
-            tabContents[i].style.display = "none";
-        }
-        document.getElementById(tabName).style.display = "block";
-        
-        const tabButtons = document.querySelectorAll(".tab-buttons button");
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-        elm.classList.add('active');
-        
-        if (tabName === 'it-data' && lowonganData.length > 0) {
-            displayLowongan('it-table', lowonganData.filter(item => item.kategori === IT_RELATED));
-        }
-    }
-
-    function displayLowongan(tableId, data) {
-        const tbody = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+    function displayLowongan(data) {
+        const tbody = document.getElementById('lowongan-table').getElementsByTagName('tbody')[0];
         tbody.innerHTML = '';
-        
-        if (tableId !== 'all-table') {
-            data.sort((a, b) => b.peluang - a.peluang);
-        }
         
         data.forEach(item => {
             let row = tbody.insertRow();
             
             let colorClass = '';
             if (item.peluang >= 5) {
-                colorClass = 'high-peluang';
+                colorClass = 'peluang-tinggi';
             } else if (item.peluang < 1) {
-                colorClass = 'low-peluang';
+                colorClass = 'peluang-rendah';
             }
             row.className = colorClass;
 
@@ -228,151 +69,87 @@
             row.insertCell().innerHTML = item.pendaftar;
             row.insertCell().innerHTML = item.peluang.toFixed(2) + '%';
             
-            if (tableId === 'all-table') {
-                row.insertCell().innerHTML = item.kategori;
-                row.insertCell().innerHTML = `<a href="${MAGANGHUB_BASE_LINK + item.id}" target="_blank" style="text-decoration: none; background-color: #3b82f6; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px;">Detail</a>`;
-            } else if (tableId === 'it-table') {
-                row.insertCell().innerHTML = item.jurusan;
-                row.insertCell().innerHTML = `<a href="${MAGANGHUB_BASE_LINK + item.id}" target="_blank" style="text-decoration: none; background-color: #3b82f6; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px;">Detail</a>`;
-            }
+            // Kolom Link Detail
+            row.insertCell().innerHTML = `<a href="${MAGANGHUB_BASE_LINK + item.id}" target="_blank" class="link-detail">Lihat</a>`;
         });
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('lowongan-table').style.display = 'table';
     }
+    
+    // Fungsi untuk Sorting Tabel
+    let sortColumn = 4; // Default sort column (Peluang)
+    let sortDir = "desc";
 
-    // Fungsi Sorting Tabel (TIDAK BERUBAH)
-    function sortTable(tableId, n) {
-        let table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-        table = document.getElementById(tableId);
-        switching = true;
+    function sortTable(n) {
+        const table = document.getElementById("lowongan-table");
+        const tbody = table.querySelector("tbody");
+        const rows = Array.from(tbody.rows);
         
-        let currentDir = table.getAttribute('data-sort-dir');
-        let currentN = table.getAttribute('data-sort-col');
-        
-        const actionColIndex = (tableId === 'all-table') ? 6 : 6;
-        if (n >= actionColIndex) return;
-
-        if (currentN == n && currentDir == 'asc') {
-            dir = "desc";
-        } else if (currentN == n && currentDir == 'desc') {
-             dir = "asc";
+        if (sortColumn === n) {
+            sortDir = sortDir === "asc" ? "desc" : "asc";
         } else {
-             dir = "desc";
+            sortDir = "desc";
+            sortColumn = n;
         }
-        
-        table.setAttribute('data-sort-col', n);
-        table.setAttribute('data-sort-dir', dir);
-        
-        while (switching) {
-            switching = false;
-            rows = table.rows;
-            for (i = 1; i < (rows.length - 1); i++) {
-                shouldSwitch = false;
-                x = rows[i].getElementsByTagName("TD")[n];
-                y = rows[i + 1].getElementsByTagName("TD")[n];
-                
-                const isNumeric = (n >= 2 && n <= 4); 
-                let xVal = isNumeric ? parseFloat(x.innerHTML) : x.innerHTML.toLowerCase();
-                let yVal = isNumeric ? parseFloat(y.innerHTML) : y.innerHTML.toLowerCase();
 
-                if (dir == "asc") {
-                    if (xVal > yVal) {
-                        shouldSwitch = true;
-                        break;
-                    }
-                } else if (dir == "desc") {
-                    if (xVal < yVal) {
-                        shouldSwitch = true;
-                        break;
-                    }
-                }
-            }
-            if (shouldSwitch) {
-                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                switching = true;
-                switchcount ++;      
+        const isNumeric = n >= 2 && n <= 4; 
+
+        rows.sort((rowA, rowB) => {
+            let x = rowA.cells[n].textContent;
+            let y = rowB.cells[n].textContent;
+
+            // Bersihkan dan konversi nilai jika numerik
+            if (isNumeric) {
+                x = parseFloat(x.replace('%', ''));
+                y = parseFloat(y.replace('%', ''));
             } else {
-                 if (switchcount == 0 && dir == "desc") {
-                    dir = "asc";
-                    switching = true;
-                }
+                x = x.toLowerCase();
+                y = y.toLowerCase();
             }
-        }
+
+            let comparison = 0;
+            if (x > y) {
+                comparison = 1;
+            } else if (x < y) {
+                comparison = -1;
+            }
+            
+            return sortDir === "asc" ? comparison : comparison * -1;
+        });
+
+        // Hapus dan masukkan kembali baris yang sudah diurutkan
+        rows.forEach(row => tbody.appendChild(row));
     }
+
 
     // --- INITIAL DATA LOAD ---
     document.addEventListener('DOMContentLoaded', () => {
-        const loadingElement = document.getElementById('loading');
-        loadingElement.style.display = 'block';
-        startLoadingAnimation(loadingElement); // Mulai animasi
+        document.getElementById('loading').style.display = 'block';
         
         fetch('/api/data')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Gagal mengambil data dari server. Coba muat ulang.');
+                }
+                return response.json();
+            })
             .then(data => {
-                stopLoadingAnimation(); // Hentikan animasi
                 lowonganData = data;
-                loadingElement.style.display = 'none';
-                displayLowongan('all-table', lowonganData); 
+                if (lowonganData.length > 0) {
+                    // Tampilkan data, sudah diurutkan dari backend (peluang tertinggi)
+                    displayLowongan(lowonganData); 
+                } else {
+                    document.getElementById('loading').innerHTML = 'Tidak ada lowongan aktif yang ditemukan saat ini.';
+                }
             })
             .catch(error => {
-                stopLoadingAnimation(); // Hentikan animasi
-                loadingElement.innerHTML = '<span style="color:red;">❌ Gagal memuat data. Pastikan backend (app.py) sudah berjalan.</span>';
-                loadingElement.style.display = 'block';
+                document.getElementById('loading').innerHTML = '❌ ERROR: ' + error.message;
                 console.error('Error fetching data:', error);
             });
-    });
-
-    // --- CV RECOMMENDER LOGIC (TIDAK BERUBAH) ---
-    document.getElementById('cv-upload-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const fileInput = document.getElementById('cv-file-input');
-        const file = fileInput.files[0];
-        
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('cv_file', file);
-
-        const resultsDiv = document.getElementById('recommendation-results');
-        const loadingDiv = document.getElementById('recommender-loading');
-        
-        resultsDiv.innerHTML = '';
-        loadingDiv.style.display = 'block';
-
-        fetch('/api/recommend', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.error || 'Terjadi kesalahan server yang tidak diketahui.') });
-            }
-            return response.json();
-        })
-        .then(recommendations => {
-            loadingDiv.style.display = 'none';
-            
-            let html = '<h3>✅ 20 Rekomendasi Terbaik Berdasarkan CV dan Peluang:</h3>';
-            html += '<ol>';
-            recommendations.forEach(rec => {
-                // Cari ID lowongan di data cache untuk membuat link detail
-                const lowonganDetail = lowonganData.find(item => item.posisi === rec.posisi && item.perusahaan === rec.perusahaan);
-                const detailLink = lowonganDetail ? MAGANGHUB_BASE_LINK + lowonganDetail.id : '#';
-
-                html += `<li><strong>${rec.posisi}</strong> di <em>${rec.perusahaan}</em> <span style="color:#10b981; font-weight:700;">(Peluang: ${rec.peluang}%)</span> 
-                         <a href="${detailLink}" target="_blank" style="text-decoration: underline; color: #1e40af; font-size: 0.9em;">(Lihat Detail)</a><br>
-                         <span style="font-style: italic; color:#555;">Alasan: ${rec.alasan}</span></li>`;
-            });
-            html += '</ol>';
-            resultsDiv.innerHTML = html;
-        })
-        .catch(error => {
-            loadingDiv.style.display = 'none';
-            resultsDiv.innerHTML = `<p style="color: red; font-weight:700;">❌ Error Rekomendasi: ${error.message}</p>`;
-            console.error('Error recommendation:', error);
-        });
     });
 
 </script>
 
 </body>
-</html> 
+</html>
